@@ -1,4 +1,5 @@
 import { useState, type ChangeEvent } from "react";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { usePrototype } from "./store";
@@ -16,6 +17,7 @@ export function downloadText(name: string, text: string, type = "application/jso
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function SettingsPage() {
+  const posthog = usePostHog();
   const { state, reset, importState, original } = usePrototype();
   const [pending, setPending] = useState<"reset" | "import" | null>(null);
   const [raw, setRaw] = useState("");
@@ -39,9 +41,11 @@ export function SettingsPage() {
   }
   function confirm() {
     if (pending === "reset") {
+      posthog.capture("scenario_reset");
       reset();
       setMessage("Przywrócono scenariusz początkowy.");
     } else if (importState(raw)) {
+      posthog.capture("scenario_imported");
       setMessage("Dane zostały zaimportowane.");
     }
     setPending(null);
@@ -58,7 +62,10 @@ export function SettingsPage() {
         <div className="flex flex-wrap gap-3">
           <Button
             variant="outline"
-            onClick={() => downloadText("doroboty-scenariusz.json", serializeState(state))}
+            onClick={() => {
+              downloadText("doroboty-scenariusz.json", serializeState(state));
+              posthog.capture("scenario_exported");
+            }}
           >
             Eksportuj dane
           </Button>

@@ -67,7 +67,7 @@ const employerNav = [
   ["/app/organizacja", "Organizacja", Building2],
 ] as const;
 export function Shell() {
-  const { state, issue, error, clearError } = usePrototype();
+  const { state, issue, error, clearError, signOut } = usePrototype();
   const person = currentPerson(state);
   const { pathname } = useLocation();
   const workspace = pathname.startsWith("/app") && person;
@@ -181,7 +181,7 @@ export function Shell() {
               <Link className="nav-link" to="/oferty">
                 Wszystkie oferty
               </Link>
-              <Link className="nav-link" to="/auth/sign-in">
+              <Link className="nav-link" to="/auth/sign-in" onClick={signOut}>
                 Zmień osobę
               </Link>
             </nav>
@@ -195,7 +195,9 @@ export function Shell() {
                     ? "Strefa pracodawcy"
                     : "Case study"}
               </span>
-              <Link to="/auth/sign-in">{person.name}</Link>
+              <Link to="/auth/sign-in" onClick={signOut}>
+                {person.name}
+              </Link>
             </div>
             <main id="main" ref={main} tabIndex={-1} className="main-content outline-none">
               {content}
@@ -220,6 +222,7 @@ export function Shell() {
                     key={item.to}
                     className="hidden text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:inline"
                     to={item.to}
+                    onClick={item.to.startsWith("/auth") && person ? signOut : undefined}
                   >
                     {item.label}
                   </Link>
@@ -257,6 +260,7 @@ export function Shell() {
                         "hidden md:inline-flex",
                       )}
                       to="/auth/sign-in"
+                      onClick={signOut}
                       aria-label="Zmień osobę"
                       title="Zmień osobę"
                     >
@@ -298,7 +302,11 @@ export function Shell() {
                 <Link to="/oferty">Oferty</Link>
                 <Link to="/metodologia">Metodologia</Link>
                 <Link to="/polityka-prywatnosci">Prywatność</Link>
-                <Link className="inline-flex items-center gap-1" to="/auth/sign-in">
+                <Link
+                  className="inline-flex items-center gap-1"
+                  to="/auth/sign-in"
+                  onClick={person ? signOut : undefined}
+                >
                   Strefa case <ArrowUpRight className="size-4" />
                 </Link>
               </nav>
