@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ApplicationRecord } from "./application-record";
@@ -6,6 +7,7 @@ import { nextStages, stageLabels, type Application } from "./model";
 import { usePrototype } from "./store";
 
 export function RecruitingApplication({ application }: { application: Application }) {
+  const posthog = usePostHog();
   const { state, run } = usePrototype();
   const [note, setNote] = useState("");
   const [announcement, setAnnouncement] = useState("");
@@ -40,6 +42,12 @@ export function RecruitingApplication({ application }: { application: Applicatio
                     variant={stage === "rejected" ? "outline" : "default"}
                     onClick={() => {
                       if (run({ type: "stage", applicationId: application.id, stage, note })) {
+                        posthog.capture("application_stage_updated", {
+                          application_id: application.id,
+                          previous_stage: application.stage,
+                          new_stage: stage,
+                          has_note: Boolean(note.trim()),
+                        });
                         setNote("");
                         setAnnouncement(`Zapisano etap: ${stageLabels[stage]}.`);
                         pendingFocus.current = true;

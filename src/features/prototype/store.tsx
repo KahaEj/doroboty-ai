@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { usePostHog } from "@posthog/react";
 import { initialState, transition, type Action, type State } from "./model";
 import { parseState, readState, saveState, type StoragePort } from "./storage";
+import { prototypeLogger } from "@/lib/prototype-logger";
 function browserStorage(): StoragePort | null {
   try {
     return window.localStorage;
@@ -9,6 +11,7 @@ function browserStorage(): StoragePort | null {
   }
 }
 function useStore() {
+  const posthog = usePostHog();
   const [loaded] = useState(() => readState(browserStorage()));
   const [state, setState] = useState(loaded.state);
   const [issue, setIssue] = useState(loaded.issue);
@@ -45,15 +48,28 @@ function useStore() {
     try {
       const next = parseState(raw);
       commit(next, true);
+      prototypeLogger.info("Prototype state imported", {
+        event: "prototype_state_imported",
+        import_source: "settings",
+      });
       return true;
     } catch (e) {
       setError((e as Error).message);
       return false;
     }
   }
+  const identifiedPersonId = useRef<string | null>(null);
   useEffect(() => {
     document.documentElement.classList.remove("dark");
   }, []);
+  useEffect(() => {
+    const person = state.people.find((candidate) => candidate.id === state.activePersonId);
+    if (identifiedPersonId.current === person?.id) return;
+
+    if (identifiedPersonId.current) posthog.reset();
+    if (person) posthog.identify(person.id, { name: person.name, role: person.role });
+    identifiedPersonId.current = person?.id ?? null;
+  }, [posthog, state.activePersonId, state.people]);
   return {
     state,
     issue,
@@ -62,8 +78,15 @@ function useStore() {
     original: loaded.original,
     run,
     importState,
+    signOut: () => run({ type: "select_person", id: null }),
     clearError: () => setError(""),
-    reset: () => commit(initialState(), true),
+    reset: () => {
+      commit(initialState(), true);
+      prototypeLogger.info("Prototype state reset", {
+        event: "prototype_state_reset",
+        reset_source: "settings",
+      });
+    },
   };
 }
 type Store = ReturnType<typeof useStore>;
